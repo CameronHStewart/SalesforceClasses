@@ -1,0 +1,249 @@
+<!-- 
+Set up version control (Done but you need to have the git username and apssword stored)
+Retrieve all data from orgs (Done works correctly for new folder but may be some issues with existing ones)
+Commit to sub version (Credentials have to be stored)
+Deploy to salesforce (TODO)
+Generate apex docs(TODO - inprogress)
+Upload apex docs to sharepoint (TODO)
+Generate release note (TODO)
+Run all tests in orgs (TODO)
+Change script to back up production instances (TODO)  -->
+<!-- 
+Use this to create javadocs of classes
+C:\Users\cameron.stewart\Documents\_Personal\matapulldown\scripts>java -jar SfAp
+exDoc.jar -s .\Instances\DevFour\BootsRSC\classes -t output -->
+<project xmlns:sf="antlib:com.salesforce" name="Sample usage of Salesforce Ant tasks" default="test" basedir=".">
+<property file="build.properties"/>
+<property environment="env"/>
+<target name="bulkRetrieve">
+	<echo message="${arg0}"/>
+	<echo message="${arg1}"/>
+	<echo message="${arg2}"/>
+	<echo message="${arg3}"/>
+	<echo message="${arg4}"/>
+	<mkdir dir="${arg3}"/>
+   <antcall target="GitCreate">
+	<param name="arg3" value="${arg3}"/>
+	<param name="arg4" value="${arg4}"/>
+	</antcall>
+	<antcall target="GitRefresh">
+		<param name="arg3" value="${arg3}"/>
+		<param name="arg4" value="${arg4}"/>
+	</antcall>
+	<antcall target="DeleteOldFiles">
+		<param name="arg3" value="${arg3}"/>
+	</antcall>
+	<antcall target="PullMetaData">
+		<param name="arg1" value="${arg1}"/>
+		<param name="arg2" value="${arg2}"/>
+		<param name="arg3" value="${arg3}"/>
+		<param name="arg4" value="${arg4}"/>
+	</antcall>
+	<antcall target="GitCommit">
+		<param name="arg3" value="${arg3}"/>
+	</antcall>
+</target>
+<macrodef name="git">
+	<attribute name="command" />
+	<attribute name="dir" default="" />
+	<element name="args" optional="true" />
+	<sequential>
+		<echo message="git @{command}" />
+		<echo message="git @{dir}" />
+		<exec executable="git" dir="@{dir}">
+			<arg value="config" />
+			<args/>
+			<arg value="--glogal" />
+			<args/>
+			<arg value="credential.helper" />
+			<args/>
+			<arg value="store" />
+			<args/>
+		</exec>
+	</sequential>
+</macrodef>
+<target name="DeleteOldFiles">
+	<delete dir="${arg3}\applications"/>
+	<delete dir="${arg3}\classes"/>
+	<delete dir="${arg3}\groups"/>
+	<delete dir="${arg3}\homePageLayouts"/>
+	<delete dir="${arg3}\labels"/>
+	<delete dir="${arg3}\layouts"/>
+	<delete dir="${arg3}\objects"/>
+	<delete dir="${arg3}\objectTranslations"/>
+	<delete dir="${arg3}\pages"/>
+	<delete dir="${arg3}\profiles"/>
+	<delete dir="${arg3}\queues"/>
+	<delete dir="${arg3}\roles"/>
+	<delete dir="${arg3}\tabs"/>
+	<delete dir="${arg3}\remoteSiteSettings"/>
+	<delete dir="${arg3}\staticresources"/>
+	<delete dir="${arg3}\triggers"/>
+	<delete dir="${arg3}\workflows"/>
+	<delete file="${arg3}\package.xml"/>
+</target>
+<target name="GitRefresh" depends="checkIfRepoExists" if="isRefreshNeeded">
+	<sequential>
+		<exec executable="git" dir="${arg3}">
+			<arg value="checkout" />
+			<arg/>
+			<arg value="-f" />
+			<arg/>
+			<arg value="HEAD" />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="config" />
+			<arg/>
+			<arg value="--global" />
+			<arg/>
+			<arg value="credential.helper" />
+			<arg/>
+			<arg value="store" />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="fetch" />
+			<arg/>
+			<arg value="origin" />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="checkout" />
+			<arg/>
+			<arg value="${arg4}" />
+			<arg/>
+		</exec>
+	</sequential>
+</target>
+<target name="GitCommit">
+	<sequential>
+		<exec executable="git" dir="${arg3}">
+			<arg value="add" />
+			<arg/>
+			<arg value="." />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="commit" />
+			<arg/>
+			<arg value="-m" />
+			<arg/>
+			<arg value="'Update'" />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="config" />
+			<arg/>
+			<arg value="--global" />
+			<arg/>
+			<arg value="credential.helper" />
+			<arg/>
+			<arg value="store" />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="push" />
+			<arg/>
+			<arg value="-u" />
+			<arg/>
+			<arg value="origin" />
+			<arg/>
+			<arg value="--all" />
+			<arg/>
+			<arg value="--force" />
+			<arg/>
+		</exec>
+	</sequential>
+</target>
+<target name="GitCreate" depends="checkIfRepoExists" if="isRefreshNotNeeded">
+	<sequential>
+		<exec executable="git" dir="${arg3}">
+			<arg value="config" />
+			<arg/>
+			<arg value="--global" />
+			<arg/>
+			<arg value="credential.helper" />
+			<arg/>
+			<arg value="store" />
+			<arg/>
+		</exec>
+		<echo message="${arg3}"/>
+		<exec executable="git" dir="${arg3}">
+			<arg value="clone" />
+			<arg/>
+			<arg value="https://cameronstewart.visualstudio.com/DefaultCollection/_git/Boots%20RSC" />
+			<arg/>
+			<arg value="." />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="remote" />
+			<arg/>
+			<arg value="add" />
+			<arg/>
+			<arg value="origin" />
+			<arg/>
+			<arg value="https://cameronstewart.visualstudio.com/DefaultCollection/_git/Boots%20RSC" />
+			<arg/>
+			<arg value="." />
+			<arg/>
+		</exec>
+		<exec executable="git" dir="${arg3}">
+			<arg value="branch" />
+			<arg/>
+			<arg value="${arg4}" />
+			<arg/>
+		</exec>
+
+	</sequential>
+</target>
+<target name="checkIfRepoExists">
+  <condition property="isRefreshNeeded">
+    <available file="${arg3}\.git" type="dir"/>
+  </condition>
+  <condition property="isRefreshNotNeeded">
+	<not>
+		<available file="${arg3}\.git" type="dir"/>
+	</not>
+  </condition>
+</target>
+ <target name="PullMetaData">
+  <sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="AnalyticSnapshot" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="ApexClass" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="ApexComponent" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="ApexPage" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="ApexTrigger" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomApplication" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomApplicationComponent" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomLabels" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomObject" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomObjectTranslation" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomPageWebLink" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomSite" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="CustomTab" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Dashboard" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="DataCategoryGroup" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Document" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="EmailTemplate" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="FieldSet" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Group" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="HomePageComponent" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="HomePageLayout" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="InstalledPackage" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Layout" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Letterhead" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="PermissionSet" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Profile" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Queue" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="RecordType" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="RemoteSiteSetting" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="ReportType" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Report" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Role" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Scontrol" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="StaticResource" retrieveTarget="${arg3}"/>
+	<sf:bulkRetrieve username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="Workflow" retrieveTarget="${arg3}"/>			
+	<sf:bulkRetrieve pollWaitMillis="30000" maxPoll="100" username="${arg0}" password="${arg1}" serverurl="${arg2}" metadataType="StaticResource" retrieveTarget="${arg3}"/>
+ </target>
+</project>
