@@ -1,58 +1,82 @@
 /*
- * This class will be used to test the record builder methods
- * @Author Brightgen
- * @Created 2013/10/35
- * @LastUpdated 2013/10/25
+ * This class will test the record builder methods
  */
 @isTest
-private class bg_Record_Builder_Tests {
+private class Record_Builder_Tests {
 	/*
-	 * This test method is tesing that a map of Id's to record for the same record can be created
+	 * Account CRUD Tests
 	 */
-	static testMethod void TestGenerationOfObjectMap() {
-		/*
-		 * Test setup
-		 */
-		bg_Record_Builder.insertMinimumAccount('Test Account 1');
+	static testMethod void CreateAccountTest() {
+		Record_Builder.insertMinimumAccount('Test Account');
 		
-		/*
-		 * Get a list of accounts to use in the getFieldObjectMap function
-		 */
-		List<Account> accounts = [Select Id, OwnerId, Name From Account Where Name = 'Test Account 1'];
+		List<Account> accounts = [Select Id, Name From account Where Name = 'Test Account'];
 		
-		/*
-		 * Generate the fields map
-		 */
-		Map<string, object> fieldMap = bg_Record_Builder.getFieldObjectMap(accounts, 'Id', new String[] {'Id'});
-		
-		/*
-		 * Assert 1 - Check that the map has been create correctly
-		 */
-		System.assertEquals(1, fieldMap.size(), 'Incorrect number of Map records created');
+		System.assertEquals(1, accounts.Size(), 'Incorrect number of accounts found');
 	}
-	
-	/*
-	 * This test method is tesing that a map of Id's to record for a different record
-	 */
-	static testMethod void TestGenerationOfObjectMapForRelatedObject() {
-		/*
-		 * Test setup
-		 */
-		bg_Record_Builder.insertMinimumAccount('Test Account 1');
+	static testMethod void UpdateAccountTest() {
+		Record_Builder.insertMinimumAccount('Test Account');
 		
-		/*
-		 * Get a list of accounts to use in the getFieldObjectMap function
-		 */
-		List<Account> accounts = [Select Id, OwnerId, Name From Account Where Name = 'Test Account 1'];
+		List<Account> accounts = [Select Id, Name From account Where Name = 'Test Account'];
+		accounts.get(0).Name = 'Test Account Updated';
+		upsert accounts;
 		
-		/*
-		 * Generate the fields map
-		 */
-		Map<string, object> fieldMap = bg_Record_Builder.getFieldObjectMap(accounts, 'OwnerId', new String[] {'Id'});
+		accounts = [Select Id, Name From account Where Name = 'Test Account Updated'];
 		
-		/*
-		 * Assert 1 - Check that the map has been create correctly
-		 */
-		System.assertEquals(1, fieldMap.size(), 'Incorrect number of Map records created');
+		System.assertEquals(1, accounts.size(), 'Incorrect number of accounts found');
+	}
+	static testMethod void DeleteAccountTest() {
+		Record_Builder.insertMinimumAccount('Test Account');
+		
+		List<Account> accounts = [Select Id, Name From account Where Name = 'Test Account'];
+		delete accounts;
+		
+		accounts = [Select Id, Name From account Where Name = 'Test Account'];
+		
+		System.assertEquals(0, accounts.size(), 'Incorrect number of accounts found');
+	}
+	static testMethod void BulkCreateAccountTest() {
+		List<Account> accounts = new List<Account>();
+		for(Integer i = 0; i < 500; i++) {
+			accounts.add(Record_Builder.createMinimumAccount('Test Account' + i));
+		}
+		
+		insert accounts;
+		
+		List<Account> insertedAccounts = [Select Id, Name From account];
+		
+		System.assertEquals(500, insertedAccounts.size(), 'Incorrect number of accounts found');
+	}
+	static testMethod void BulkUpdateAccountTest() {
+		List<Account> accounts = new List<Account>();
+		for(Integer i = 0; i < 500; i++) {
+			accounts.add(Record_Builder.createMinimumAccount('Test Account' + i));
+		}
+		
+		insert accounts;
+		
+		List<Account> insertedAccounts = [Select Id, Name From account];
+		
+		for(Account account : insertedAccounts) {
+			account.Name = 'Updated Account';
+		}
+		
+		upsert insertedAccounts;
+		List<Account> updatedAccounts = [Select Id, Name From account Where Name = 'Updated Account'];
+		
+		System.assertEquals(500, updatedAccounts.size(), 'Incorrect number of accounts found');
+	}
+	static testMethod void BulkDeleteAccountTest() {
+		List<Account> accounts = new List<Account>();
+		for(Integer i = 0; i < 500; i++) {
+			accounts.add(Record_Builder.createMinimumAccount('Test Account' + i));
+		}
+		
+		insert accounts;
+		
+		delete [Select Id, Name From account];
+		
+		List<Account> deletedAccounts = [Select Id, Name From account];
+		
+		System.assertEquals(0, deletedAccounts.size(), 'Incorrect number of accounts found');
 	}
 }
