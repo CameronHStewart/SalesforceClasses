@@ -1,58 +1,67 @@
 /*
- * This class will be used to test the record builder methods
- * @Author Brightgen
- * @Created 2013/10/35
- * @LastUpdated 2013/10/25
+ * This class will be used to facilitate the trigger creation of ASP objects from the case
+ * @Author: Brightgen
+ * @Created 2013/11/12
  */
-@isTest
-private class Helper_Method_Tests {
-	/*
-	 * This test method is tesing that a map of Id's to record for the same record can be created
-	 */
-	static testMethod void TestGenerationOfObjectMap() {
-		/*
-		 * Test setup
-		 */
-		Record_Builder.insertMinimumAccount('Test Account 1');
-		
-		/*
-		 * Get a list of accounts to use in the getFieldObjectMap function
-		 */
-		List<Account> accounts = [Select Id, OwnerId, Name From Account Where Name = 'Test Account 1'];
-		
-		/*
-		 * Generate the fields map
-		 */
-		Map<string, object> fieldMap = Helper_Methods.getFieldObjectMap(accounts, 'Id', new String[] {'Id'});
-		
-		/*
-		 * Assert 1 - Check that the map has been create correctly
-		 */
-		System.assertEquals(1, fieldMap.size(), 'Incorrect number of Map records created');
+public with sharing class bg_Case_ASP_Creation_Helper{
+	private static List<Case> checkChangeCriteria(List<Case> newCases, List<Case> oldCases) {
+		return (List<Case>) bg_Helper_Methods.getAllRecordsThatHaveChanged(newCases, oldCases, new String[] {'Status'});
 	}
 	
-	/*
-	 * This test method is tesing that a map of Id's to record for a different record
-	 */
-	static testMethod void TestGenerationOfObjectMapForRelatedObject() {
+	public static void createNeededASPRecords(List<Case> newCases, List<Case> oldCases) {
+		createNeededASPRecords(checkChangeCriteria(newCases, oldCases));
+	}
+	public static void createNeededASPRecords(List<Case> newCases) {
+		List<Case> ASPCases = new List<Case>();
 		/*
-		 * Test setup
+		 * Genreate a list of cases that need to have asp records created for them
 		 */
-		Record_Builder.insertMinimumAccount('Test Account 1');
+		Map<String, object[]> recordMatchingMap = new Map<String, object[]>();
+		recordMatchingMap.put('Status', new object[] {'Approved'});
+		recordMatchingMap.put('RecordTypeId', new object[] {bg_Helper_Methods.getRecordTypeId('Case', 'Request_For_ASP')});
+		ASPCases = bg_Helper_Methods.getAllRecordsThatHaveValues(newCases, recordMatchingMap);
+		/*
+		 * Generate CHI Lead Map  and Quotes Map
+		 */
+		Map<string, sObject> genericCHILeadMap = bg_Helper_Methods.getFieldObjectMap(ASPCases, 'CHI_Lead__c', new String[] {'Id'});
+		/*
+		 * Change this to pull Quotes linking to the opportunity
+		 */
+		Map<String, object[]> QuoteFilter = new Map<String, object[]>();
+		QuoteFilter.put('Is_Primary__c', new object[] {true});
+		Map<string, sObject> genericQuoteMap = bg_Helper_Methods.getFieldChildObjectMapAndFilter(genericCHILeadMap.values(), 'BigMachines_Quote__c', 'Opportunity__c', new String[] {'Id', 'Opportunity__c', 'Is_Primary__c'},QuoteFilter);
+
+		/*
+		 * Create asp records for those cases
+		 */
+		List<ASP__c> casesToInsert = new List<ASP__c>();
+		Map<string, sObject> genericASPMap = bg_Helper_Methods.getFieldChildObjectMap(ASPCases, 'ASP__c', 'Related_CHI_Lead__c', new String[] {'Id'});
 		
-		/*
-		 * Get a list of accounts to use in the getFieldObjectMap function
-		 */
-		List<Account> accounts = [Select Id, OwnerId, Name From Account Where Name = 'Test Account 1'];
-		
-		/*
-		 * Generate the fields map
-		 */
-		Map<string, object> fieldMap = Helper_Methods.getFieldObjectMap(accounts, 'OwnerId', new String[] {'Id'});
-		
-		/*
-		 * Assert 1 - Check that the map has been create correctly
-		 */
-		System.assertEquals(1, fieldMap.size(), 'Incorrect number of Map records created');
+		for(Case ASPCase : ASPCases) {
+			if(!genericASPMap.containsKey(ASPCase.Id)) {
+				ASP__c asp = new ASP__c();
+				asp.Function__c = ASPCase.Function__c;
+				asp.Definition__c = ASPCase.Definition__c;
+				asp.Material_Return_Info__c = ASPCase.Material_Return_Info__c;
+				asp.Picklist__c = ASPCase.Reason__c;
+				asp.Charge_to_Customer__c = ASPCase.Charge_to_Customer__c;
+				asp.Request_For_ASP__c = ASPCase.Id;
+				/*
+				 * Populate the case Id from the opportunity and case
+				 */
+				Id CHILeadId;
+				if(genericCHILeadMap.containsKey(ASPCase.CHI_Lead__c)) {
+					CHILeadId = genericCHILeadMap.get(ASPCase.CHI_Lead__c).Id;
+				}
+				Id QuoteId;
+				Map<string, sObject> filteredQuotes = bg_Helper_Methods.FilterMap(genericQuoteMap, QuoteFilter);
+				if(filteredQuotes.values().size() > 0) {
+					QuoteId = filteredQuotes.values().get(0).Id;
+				} 
+				asp.Quote__c = QuoteId;
+				casesToInsert.add(asp);
+			}
+		}
+		insert casesToInsert;
 	}
 }
